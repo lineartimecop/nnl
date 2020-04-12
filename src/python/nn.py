@@ -19,8 +19,6 @@ Y = Y_very_wiggly
 
 
 def normalize(X):
-    N = X.shape[1]
-
     m = np.mean(X)
     standard_deviation = np.std(X)
 
@@ -70,7 +68,7 @@ def predict(W, b, X, return_hidden = False):
         return Y_hat
 
 
-def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0.9, mini_batch_size = None, grad_check = False, debug = False, printing = False):
+def train(X, Y, depth, width, epochs = 3000, learning_rate = None, alpha = 0.9, batch_size = None, grad_check = False, debug = False, printing = False):
     # Initialize parameters
     W = []
     b = []
@@ -99,39 +97,39 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
     for l in range(L + 1):
         p_num = p_num + W[l].shape[0] * W[l].shape[1] + b[l].shape[0] * b[l].shape[1]
 
-    # Shuffle data for mini-batches
-    if(mini_batch_size):
+    # Shuffle data for batches
+    if(batch_size):
         D = np.concatenate((X, Y), axis = 0)
         np.random.shuffle(D.T)
 
         X_shuffled = D[0:X.shape[0], 0:X.shape[1]]
         Y_shuffled = D[X.shape[0]:X.shape[0] + Y.shape[0], 0:Y.shape[1]]
 
-        mini_batch_index = 0
+        batch_index = 0
 
     v_W = []
     v_b = []
 
     # Training NN
-    for i in range(iterations):
-        # Take one mini-batch
-        if(mini_batch_size):
-            X_mini = X_shuffled[:,mini_batch_index * mini_batch_size:(mini_batch_index + 1) * mini_batch_size]
-            Y_mini = Y_shuffled[:,mini_batch_index * mini_batch_size:(mini_batch_index + 1) * mini_batch_size]
+    for i in range(epochs):
+        # Take one batch
+        if(batch_size):
+            X_batch = X_shuffled[:,batch_index * batch_size:(batch_index + 1) * batch_size]
+            Y_batch = Y_shuffled[:,batch_index * batch_size:(batch_index + 1) * batch_size]
 
-            if((mini_batch_index + 1) * mini_batch_size >= m):
-                mini_batch_index = 0
+            if((batch_index + 1) * batch_size >= m):
+                batch_index = 0
             else:
-                mini_batch_index = mini_batch_index + 1
+                batch_index = batch_index + 1
         else:
-            X_mini = X
-            Y_mini = Y
+            X_batch = X
+            Y_batch = Y
 
         # Forward propagation
-        Z, A, Y_hat_mini = predict(W, b, X_mini, True)
+        Z, A, Y_hat_batch = predict(W, b, X_batch, True)
 
         # Cost
-        J = 1 / m * np.dot(Y_hat_mini - Y_mini, (Y_hat_mini - Y_mini).T)
+        J = 1 / m * np.dot(Y_hat_batch - Y_batch, (Y_hat_batch - Y_batch).T)
 
         # Back prop
         dA = []
@@ -140,9 +138,9 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
         db = []
 
         # - Output layer
-        dA.append(np.dot(W[L].T, 2 * (Y_hat_mini - Y_mini)))
-        dW.append(2 / m * np.dot(Y_hat_mini - Y_mini, A[L - 1].T))
-        db.append(2 / m * np.sum(Y_hat_mini - Y_mini, axis = 1, keepdims = True))
+        dA.append(np.dot(W[L].T, 2 * (Y_hat_batch - Y_batch)))
+        dW.append(2 / m * np.dot(Y_hat_batch - Y_batch, A[L - 1].T))
+        db.append(2 / m * np.sum(Y_hat_batch - Y_batch, axis = 1, keepdims = True))
 
         # - l-th hidden layer
         for l in range(1, L):
@@ -153,7 +151,7 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
 
         # - Input layer
         dZ.append(np.multiply(dA[L - 1], relu_prime(Z[0])))
-        dW.append(1 / m * np.sum(np.multiply(np.repeat(X_mini, width, axis = 0), dZ[L - 1]), axis = 1, keepdims = True))
+        dW.append(1 / m * np.sum(np.multiply(np.repeat(X_batch, width, axis = 0), dZ[L - 1]), axis = 1, keepdims = True))
         db.append(1 / m * np.sum(dZ[L - 1], axis = 1, keepdims = True))
 
         # Grad check
@@ -196,10 +194,10 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
                         W_plus[l][j][k] = W_plus[l][j][k] + eps_grad_check
                         W_minus[l][j][k] = W_minus[l][j][k] - eps_grad_check
 
-                        Y_hat_plus = predict(W_plus, b, X_mini)
-                        Y_hat_minus = predict(W_minus, b, X_mini)
-                        J_plus = 1 / m * np.dot(Y_hat_plus - Y_mini, (Y_hat_plus - Y_mini).T)
-                        J_minus = 1 / m * np.dot(Y_hat_minus - Y_mini, (Y_hat_minus - Y_mini).T)
+                        Y_hat_plus = predict(W_plus, b, X_batch)
+                        Y_hat_minus = predict(W_minus, b, X_batch)
+                        J_plus = 1 / m * np.dot(Y_hat_plus - Y_batch, (Y_hat_plus - Y_batch).T)
+                        J_minus = 1 / m * np.dot(Y_hat_minus - Y_batch, (Y_hat_minus - Y_batch).T)
 
                         W_plus[l][j][k] = W_plus[l][j][k] - eps_grad_check
                         W_minus[l][j][k] = W_minus[l][j][k] + eps_grad_check
@@ -212,10 +210,10 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
                     b_plus[l][j] = b_plus[l][j] + eps_grad_check
                     b_minus[l][j] = b_minus[l][j] - eps_grad_check
 
-                    Y_hat_plus = predict(W, b_plus, X_mini)
-                    Y_hat_minus = predict(W, b_minus, X_mini)
-                    J_plus = 1 / m * np.dot(Y_hat_plus - Y_mini, (Y_hat_plus - Y_mini).T)
-                    J_minus = 1 / m * np.dot(Y_hat_minus - Y_mini, (Y_hat_minus - Y_mini).T)
+                    Y_hat_plus = predict(W, b_plus, X_batch)
+                    Y_hat_minus = predict(W, b_minus, X_batch)
+                    J_plus = 1 / m * np.dot(Y_hat_plus - Y_batch, (Y_hat_plus - Y_batch).T)
+                    J_minus = 1 / m * np.dot(Y_hat_minus - Y_batch, (Y_hat_minus - Y_batch).T)
 
                     b_plus[l][j] = b_plus[l][j] - eps_grad_check
                     b_minus[l][j] = b_minus[l][j] + eps_grad_check
@@ -227,7 +225,7 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
             den = np.linalg.norm(grad, 2) + np.linalg.norm(grad_approx, 2)
 
             if(nom / den > eps_grad_check):
-                print("Error with gradient in iteration = " + str(i) + ", grad check = " + str(nom / den))
+                print("Error with gradient in epoch: " + str(i) + ", grad check = " + str(nom / den))
 
         # Learning rate
         eps_momentum = learning_rate
@@ -251,7 +249,7 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
         if(debug):
             if(i == 0):
                 header = []
-                header.append("Iteration")
+                header.append("Epoch")
                 header.append("Cost")
                 header.append("Epsilon")
 
@@ -290,7 +288,7 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
 
         # Printing
         if(printing and (i + 1) % 1000 == 0):
-            print("Normalized MSE in iteration " + str(i + 1) + " = " + str(J[0][0]))
+            print("MSE in epoch " + str(i + 1) + ": " + str(J[0][0]))
 
     # Dump training data
     if(debug):
@@ -312,7 +310,7 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
 
         # Plots
         print("Plotting parameters...")
-        I = list(range(1, iterations + 1))
+        I = list(range(1, epochs + 1))
         for j in range(1, 3):
             P = []
             dP = []
@@ -323,9 +321,9 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
             parameter_name = training_data[0][j]
 
             plt.plot(I, P, "r-")
-            plt.xlabel("Iteration")
+            plt.xlabel("Epoch")
             plt.ylabel(parameter_name)
-            plt.title(parameter_name + " by iteration")
+            plt.title(parameter_name + " by epoch")
 
             plt.savefig("nn-debug/" + parameter_name  + ".png")
             plt.close()
@@ -344,11 +342,11 @@ def train(X, Y, depth, width, iterations = 3000, learning_rate = None, alpha = 0
             plt.subplot(211)
             plt.plot(I, P, "r-")
             plt.ylabel(parameter_name)
-            plt.title(parameter_name + " by iteration")
+            plt.title(parameter_name + " by epoch")
 
             plt.subplot(212)
             plt.plot(I, dP, "b-")
-            plt.xlabel("Iteration")
+            plt.xlabel("Epoch")
             plt.ylabel(d_parameter_name)
 
             plt.savefig("nn-debug/" + parameter_name  + ".png")
@@ -370,7 +368,7 @@ if(config == "MeasureParameter"):
         average_mse = 0
         for j in range(N):
             p = 0.01 * (i + 1)
-            W, b, tmp = train(X_norm, Y_norm, depth = 3, width = 5, iterations = 3000, param = p, mini_batch_size = 16)
+            W, b, tmp = train(X_norm, Y_norm, depth = 3, width = 5, epochs = 3000, param = p, batch_size = 16)
             average_mse = average_mse + tmp
 
         average_mse = average_mse / N
@@ -393,20 +391,20 @@ if(config == "Plot"):
     Y_norm = normalize(Y)
 
     # Linear function
-    #W, b, train_mse = train(X_norm, Y_norm, depth = 1, width = 2, learning_rate = 0.12, iterations = 100)
-    #W, b, train_mse = train(X_norm, Y_norm, depth = 1, width = 2, learning_rate = 0.12, iterations = 100, mini_batch_size = 2)
+    #W, b, training_mse = train(X_norm, Y_norm, depth = 1, width = 2, learning_rate = 0.12, epochs = 100)
+    #W, b, training_mse = train(X_norm, Y_norm, depth = 1, width = 2, learning_rate = 0.12, epochs = 100, batch_size = 2)
 
     # Non-linear function
-    #W, b, train_mse = train(X_norm, Y_norm, depth = 3, width = 5, learning_rate = 0.025, iterations = 3000)
-    #W, b, train_mse = train(X_norm, Y_norm, depth = 3, width = 5, learning_rate = 0.1, iterations = 3000, mini_batch_size = 16)
+    #W, b, training_mse = train(X_norm, Y_norm, depth = 3, width = 5, learning_rate = 0.025, epochs = 3000)
+    #W, b, training_mse = train(X_norm, Y_norm, depth = 3, width = 5, learning_rate = 0.1, epochs = 3000, batch_size = 16)
 
     # Very wiggly function
-    #W, b, train_mse = train(X_norm, Y_norm, depth = 5, width = 10, learning_rate = 0.01, iterations = 30000, printing = True)
-    W, b, train_mse = train(X_norm, Y_norm, depth = 5, width = 10, learning_rate = 0.03, iterations = 30000, mini_batch_size = 128, printing = True)
+    W, b, training_mse = train(X_norm, Y_norm, depth = 5, width = 10, learning_rate = 0.01, epochs = 30000, printing = True)
+    #W, b, training_mse = train(X_norm, Y_norm, depth = 5, width = 10, learning_rate = 0.03, epochs = 30000, batch_size = 128, printing = True)
 
     Y_hat_norm = predict(W, b, X_norm)
 
-    print("Train MSE: " + str(train_mse))
+    print("Training MSE: " + str(training_mse))
 
     mean_Y = np.mean(Y)
     sd_Y = np.std(Y)
