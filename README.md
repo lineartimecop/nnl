@@ -1,2 +1,2 @@
 # nnl
-An uncomplicated but efficient Neural Network Library
+An uncomplicated Neural Network Library
